@@ -69,13 +69,13 @@ class PDFBuilder(Builder):
         """Write a document to PDF."""
         self.current_docname = docname
         self.secnumbers = self.env.toc_secnumbers.get(docname, {})
-        
+
         # Create writer and translator
         writer = PDFWriter(self)
         # Set document and process it
         writer.document = doctree
         writer.translate()
-        
+
         # Log the output
         if writer.output:
             logger.info(__('PDF written to %s'), writer.output)

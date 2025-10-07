@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING
 
 from docutils import nodes, writers
 
-from sphinx import addnodes
-from sphinx.locale import _, admonitionlabels
 from sphinx.util.docutils import SphinxTranslator
 
 if TYPE_CHECKING:
@@ -34,7 +32,7 @@ class PDFWriter(writers.Writer):
     def translate(self) -> None:
         visitor = self.builder.create_translator(self.document, self.builder)
         self.document.walkabout(visitor)
-        self.output = visitor.body if visitor.body else ''
+        self.output = visitor.body or ''
 
 
 class PDFTranslator(SphinxTranslator):
@@ -54,8 +52,7 @@ class PDFTranslator(SphinxTranslator):
     def depart_document(self, node: Element) -> None:
         """End of document - generate PDF."""
         from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-        from reportlab.lib.units import inch
+        from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
         # Create PDF
@@ -82,8 +79,7 @@ class PDFTranslator(SphinxTranslator):
 
             if element_type == 'title':
                 style = styles['Title']
-                story.append(Paragraph(content, style))
-                story.append(Spacer(1, 12))
+                story.extend([Paragraph(content, style), Spacer(1, 12)])
             elif element_type == 'heading':
                 level = element.get('level', 1)
                 if level == 1:
@@ -92,12 +88,10 @@ class PDFTranslator(SphinxTranslator):
                     style = styles['Heading2']
                 else:
                     style = styles['Heading3']
-                story.append(Paragraph(content, style))
-                story.append(Spacer(1, 12))
+                story.extend([Paragraph(content, style), Spacer(1, 12)])
             elif element_type == 'paragraph':
                 style = styles['Normal']
-                story.append(Paragraph(content, style))
-                story.append(Spacer(1, 12))
+                story.extend([Paragraph(content, style), Spacer(1, 12)])
             elif element_type == 'pagebreak':
                 story.append(PageBreak())
 
