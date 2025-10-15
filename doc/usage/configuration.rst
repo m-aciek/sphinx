@@ -3041,6 +3041,36 @@ These options influence LaTeX output.
       and a true value selected the :code-py:`'inline'` display.
       For backwards compatibility, :code-py:`True` is still accepted.
 
+.. confval:: latex_svg_support
+   :type: :code-py:`bool`
+   :default: :code-py:`False`
+
+   Enable native SVG image support in LaTeX output using CTAN's svg_ package.
+
+   When enabled, SVG images are included using the :code-tex:`\\includesvg`
+   command from the svg package, which converts them to PDF on-the-fly
+   using Inkscape during LaTeX compilation.
+
+   .. warning::
+
+      Using this option requires:
+
+      * The svg_ LaTeX package to be installed
+      * Inkscape to be available on the system
+      * Running LaTeX with the ``--shell-escape`` flag
+        (e.g., ``pdflatex --shell-escape``)
+
+      The ``--shell-escape`` flag allows LaTeX to execute external commands,
+      which may have security implications. Use with caution.
+
+   When disabled (the default), SVG images are not natively supported
+   by the LaTeX builder. Consider using the :mod:`sphinx.ext.imgconverter`
+   extension to convert SVG images to a supported format (PDF or PNG).
+
+   .. _svg: https://www.ctan.org/pkg/svg
+
+   .. versionadded:: 8.3
+
 .. confval:: latex_use_latex_multicolumn
    :type: :code-py:`bool`
    :default: :code-py:`False`

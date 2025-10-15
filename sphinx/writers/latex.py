@@ -1692,12 +1692,19 @@ class LaTeXTranslator(SphinxTranslator):
         base = img_path.with_suffix('')
         ext = img_path.suffix
 
-        if self.in_title and base:
-            # Lowercase tokens forcely because some fncychap themes capitalize
-            # the options of \sphinxincludegraphics unexpectedly (ex. WIDTH=...).
-            cmd = rf'\lowercase{{\sphinxincludegraphics{options}}}{{{{{base}}}{ext}}}'
+        # Use \includesvg for SVG files when SVG support is enabled
+        if ext.lower() == '.svg' and self.config.latex_svg_support:
+            if self.in_title and base:
+                cmd = rf'\lowercase{{\includesvg{options}}}{{{{{base}}}}}'
+            else:
+                cmd = rf'\includesvg{options}{{{{{base}}}}}'
         else:
-            cmd = rf'\sphinxincludegraphics{options}{{{{{base}}}{ext}}}'
+            if self.in_title and base:
+                # Lowercase tokens forcely because some fncychap themes capitalize
+                # the options of \sphinxincludegraphics unexpectedly (ex. WIDTH=...).
+                cmd = rf'\lowercase{{\sphinxincludegraphics{options}}}{{{{{base}}}{ext}}}'
+            else:
+                cmd = rf'\sphinxincludegraphics{options}{{{{{base}}}{ext}}}'
         # escape filepath for includegraphics, https://tex.stackexchange.com/a/202714/41112
         if '#' in str(base):
             cmd = rf'{{\catcode`\#=12{cmd}}}'

@@ -132,6 +132,11 @@ class LaTeXBuilder(Builder):
         self.themes = ThemeFactory(srcdir=self.srcdir, config=self.config)
         texescape.init()
 
+        # Enable SVG support if configured
+        if self.config.latex_svg_support:
+            if 'image/svg+xml' not in self.supported_image_types:
+                self.supported_image_types = self.supported_image_types + ['image/svg+xml']
+
         self.init_context()
         self.init_babel()
         self.init_multilingual()
@@ -545,6 +550,12 @@ def install_packages_for_ja(app: Sphinx) -> None:
         app.add_latex_package('pxjahyper', after_hyperref=True)
 
 
+def install_svg_package(app: Sphinx) -> None:
+    """Install svg package if SVG support is enabled."""
+    if app.config.latex_svg_support:
+        app.add_latex_package('svg', after_hyperref=False)
+
+
 def default_latex_engine(config: Config) -> str:
     """Better default latex_engine settings for specific languages."""
     if config.language == 'ja':
@@ -594,6 +605,7 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     app.connect('config-inited', validate_config_values, priority=800)
     app.connect('config-inited', validate_latex_theme_options, priority=800)
     app.connect('builder-inited', install_packages_for_ja)
+    app.connect('builder-inited', install_svg_package)
 
     app.add_config_value(
         'latex_engine',
@@ -636,6 +648,9 @@ def setup(app: Sphinx) -> ExtensionMetadata:
 
     app.add_config_value(
         'latex_docclass', default_latex_docclass, '', types=frozenset({dict})
+    )
+    app.add_config_value(
+        'latex_svg_support', False, '', types=frozenset({bool})
     )
 
     return {
