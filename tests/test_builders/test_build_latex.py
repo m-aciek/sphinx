@@ -1826,6 +1826,35 @@ def test_latex_equations(app: SphinxTestApp) -> None:
     assert expected in result
 
 
+@pytest.mark.sphinx('latex', testroot='latex-svg')
+def test_latex_svg_support_enabled(app: SphinxTestApp) -> None:
+    """Test that SVG images are handled with \\includesvg when latex_svg_support is True."""
+    app.build(force_all=True)
+
+    result = (app.outdir / 'projectnamenotset.tex').read_text(encoding='utf8')
+
+    # Check that svg package is included
+    assert '\\usepackage{svg}' in result
+
+    # Check that SVG images use \includesvg (not \sphinxincludegraphics)
+    assert '\\includesvg[width=200\\sphinxpxdimen]{{test}}' in result
+    assert '\\includesvg[width=150\\sphinxpxdimen]{{test}}' in result
+
+    # SVG file should be copied
+    assert (app.outdir / 'test.svg').exists()
+
+
+@pytest.mark.sphinx('latex', testroot='images')
+def test_latex_svg_support_disabled(app: SphinxTestApp) -> None:
+    """Test that SVG images are not specially handled when latex_svg_support is False."""
+    app.build(force_all=True)
+
+    result = (app.outdir / 'projectnamenotset.tex').read_text(encoding='utf8')
+
+    # Check that svg package is NOT included
+    assert '\\usepackage{svg}' not in result
+
+
 @pytest.mark.sphinx('latex', testroot='image-in-parsed-literal')
 def test_latex_image_in_parsed_literal(app: SphinxTestApp) -> None:
     app.build(force_all=True)
