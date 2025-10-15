@@ -48,6 +48,11 @@ Features added
 * #13439: linkcheck: Permit warning on every redirect with
   ``linkcheck_allowed_redirects = {}``.
   Patch by Adam Turner and James Addison.
+* #13953: Add :confval:`latex_svg_support` option to enable native SVG image
+  support in LaTeX output using CTAN's svg package.
+  When enabled, SVG images are included using the ``\includesvg`` command,
+  which converts them to PDF on-the-fly using Inkscape during LaTeX compilation.
+  Patch by Maciej Olko.
 * #13497: Support C domain objects in the table of contents.
 * #13500: LaTeX: add support for ``fontawesome6`` package.
   Patch by Jean-François B.
