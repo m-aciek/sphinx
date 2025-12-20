@@ -62,6 +62,7 @@ class TranslationProgressNotifier(SphinxTransform):
         )
         
         # Format the message with current progress
+        # Note: 'total' and 'translated' now represent word counts
         formatted_message = message.format(
             progress=progress_percent,
             translated=translated,

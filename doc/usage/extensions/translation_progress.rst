@@ -19,6 +19,10 @@ beginning of documents that are not fully translated, informing readers about
 the current translation progress and encouraging contributions to improve the 
 translation.
 
+Translation progress is calculated based on the number of words in translatable
+messages (msgids), weighted by word count. This provides a more accurate measure
+of translation completeness compared to simply counting nodes.
+
 The extension works by leveraging Sphinx's existing internationalization 
 infrastructure and only activates when translation classes are enabled.
 
@@ -47,8 +51,8 @@ Configuration
    The message can include the following placeholders:
 
    - ``{progress}`` - Progress percentage (0-100)
-   - ``{translated}`` - Number of translated elements
-   - ``{total}`` - Total number of translatable elements
+   - ``{translated}`` - Number of translated words
+   - ``{total}`` - Total number of words in translatable content
 
    If not specified, a default message is used::
 

@@ -732,7 +732,7 @@ def test_translation_progress_substitution(app):
 
     doctree = app.env.get_doctree('translation_progress')
 
-    assert doctree[0][19][0] == '68.75%'  # 11 out of 16 lines are translated
+    assert doctree[0][19][0] == '68.64%'  # 81 out of 118 words are translated
 
 
 @pytest.mark.sphinx(
