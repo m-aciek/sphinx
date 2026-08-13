@@ -38,6 +38,9 @@ The most common builders are:
    Build LaTeX sources that can be compiled to a PDF document using
    :program:`pdflatex`.
 
+**pdf**
+   Build PDF documents directly using ReportLab.
+
 **man**
    Build manual pages in groff format for UNIX systems.
 
@@ -302,6 +305,26 @@ name is ``rinoh``. Refer to the `rinohtype manual`_ for details.
 
 .. _rinohtype: https://github.com/brechtm/rinohtype
 .. _rinohtype manual: https://www.mos6581.org/rinohtype/master/quickstart.html#sphinx-builder
+
+.. module:: sphinx.builders.pdf
+.. class:: PDFBuilder
+
+   This builder produces PDF files directly using the ReportLab PDF Toolkit.
+   Unlike the LaTeX builder, this builder does not require a LaTeX installation
+   and generates PDF files in a single step.
+
+   .. autoattribute:: name
+
+   .. autoattribute:: format
+
+   .. autoattribute:: supported_image_types
+
+   .. note::
+
+      This builder requires the ``reportlab`` package to be installed.
+      Install it with ``pip install reportlab``.
+
+   .. versionadded:: 8.3
 
 .. module:: sphinx.builders.text
 .. class:: TextBuilder
