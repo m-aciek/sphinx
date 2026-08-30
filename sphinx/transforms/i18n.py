@@ -629,7 +629,7 @@ class Locale(SphinxTransform):
 
 
 class TranslationProgressTotaliser(SphinxTransform):
-    """Calculate the number of translated and untranslated nodes."""
+    """Calculate translation progress by word count (weighted)."""
 
     default_priority = 25  # MUST happen after Locale
 
@@ -639,15 +639,21 @@ class TranslationProgressTotaliser(SphinxTransform):
         if issubclass(self.env._builder_cls, MessageCatalogBuilder):
             return
 
-        total = translated = 0
-        for node in NodeMatcher(nodes.Element, translated=Any).findall(self.document):
-            total += 1
-            if node['translated']:
-                translated += 1
+        total_words = translated_words = 0
+        
+        # Extract messages and count words in each msgid
+        for node, msg in extract_messages(self.document):
+            # Count words in the message (msgid)
+            word_count = len(msg.split())
+            total_words += word_count
+            
+            # Check if this node was translated
+            if node.get('translated', False):
+                translated_words += word_count
 
         self.document['translation_progress'] = {
-            'total': total,
-            'translated': translated,
+            'total': total_words,
+            'translated': translated_words,
         }
 
 
