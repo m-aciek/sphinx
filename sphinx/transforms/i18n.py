@@ -133,6 +133,7 @@ class _NodeUpdater:
         warning_msg: str,
         *,
         key_func: Callable[[nodes.Element], Any] = attrgetter('rawsource'),
+        count_only: bool = False,
     ) -> None:
         """Warn about mismatches between references in original and translated content.
         Ignores the order of references when comparing. This allows translators to
@@ -140,16 +141,25 @@ class _NodeUpdater:
 
         :param key_func: A function to extract the comparison key from each reference.
             Defaults to extracting the ``rawsource`` attribute.
+        :param count_only: Compare only the number of references when their names
+            may be translated.
         """
-        old_ref_keys = list(map(key_func, old_refs))
-        new_ref_keys = list(map(key_func, new_refs))
+        if self.noqa:
+            return
 
-        # The ref_keys lists may contain ``None``, so compare hashes.
-        # Recall objects which compare equal have the same hash value.
-        old_ref_keys.sort(key=hash)
-        new_ref_keys.sort(key=hash)
+        if count_only:
+            inconsistent = len(old_refs) != len(new_refs)
+        else:
+            old_ref_keys = list(map(key_func, old_refs))
+            new_ref_keys = list(map(key_func, new_refs))
 
-        if not self.noqa and old_ref_keys != new_ref_keys:
+            # The ref_keys lists may contain ``None``, so compare hashes.
+            # Recall objects which compare equal have the same hash value.
+            old_ref_keys.sort(key=hash)
+            new_ref_keys.sort(key=hash)
+            inconsistent = old_ref_keys != new_ref_keys
+
+        if inconsistent:
             old_ref_rawsources = [ref.rawsource for ref in old_refs]
             new_ref_rawsources = [ref.rawsource for ref in new_refs]
             logger.warning(
@@ -282,21 +292,16 @@ class _NodeUpdater:
         is_refnamed_ref = NodeMatcher(nodes.reference, refname=Any)
         old_refs = list(is_refnamed_ref.findall(self.node))
         new_refs = list(is_refnamed_ref.findall(self.patch))
-        # Only compare the count of references, not their content.
-        # Translators are allowed to change display text (which affects rawsource comparison),
-        # and the fixup mechanism below will correct the refnames if needed.
-        if not self.noqa and len(old_refs) != len(new_refs):
-            old_ref_rawsources = [ref.rawsource for ref in old_refs]
-            new_ref_rawsources = [ref.rawsource for ref in new_refs]
-            logger.warning(
-                __(
-                    'inconsistent references in translated message.'
-                    ' original: {0}, translated: {1}'
-                ).format(old_ref_rawsources, new_ref_rawsources),
-                location=self.node,
-                type='i18n',
-                subtype='inconsistent_references',
-            )
+        # Both display text and reference names may be translated.
+        self.compare_references(
+            old_refs,
+            new_refs,
+            __(
+                'inconsistent references in translated message.'
+                ' original: {0}, translated: {1}'
+            ),
+            count_only=True,
+        )
         old_ref_names = [r['refname'] for r in old_refs]
         new_ref_names = [r['refname'] for r in new_refs]
         orphans = [*({*old_ref_names} - {*new_ref_names})]
@@ -356,32 +361,13 @@ class _NodeUpdater:
                 newc['ids'] = refname_ids_map[refname].pop()
 
     def update_pending_xrefs(self) -> None:
-        # Original pending_xref['reftarget'] contain not-translated
-        # target name, new pending_xref must use original one.
-        # This code restricts to change ref-targets in the translation.
         old_xrefs = [*self.node.findall(addnodes.pending_xref)]
         new_xrefs = [*self.patch.findall(addnodes.pending_xref)]
-        # Only compare the count of cross-references, not their targets.
-        # For term references, translators may translate both display text and
-        # the term name itself (when the glossary is also translated).
-        # For other xrefs, the fixup mechanism below handles target corrections.
-        if not self.noqa and len(old_xrefs) != len(new_xrefs):
-            old_xref_rawsources = [ref.rawsource for ref in old_xrefs]
-            new_xref_rawsources = [ref.rawsource for ref in new_xrefs]
-            logger.warning(
-                __(
-                    'inconsistent term references in translated message.'
-                    ' original: {0}, translated: {1}'
-                ).format(old_xref_rawsources, new_xref_rawsources),
-                location=self.node,
-                type='i18n',
-                subtype='inconsistent_references',
-            )
-        xref_reftarget_map: dict[tuple[str, str, str] | None, dict[str, Any]] = {}
 
-        def get_ref_key(node: addnodes.pending_xref) -> tuple[str, str, str] | None:
+        def get_ref_key(node: nodes.Element) -> tuple[str, str, str] | None:
             case = node['refdomain'], node['reftype']
             if case == ('std', 'term'):
+                # Glossary targets may be translated; compare only their count.
                 return None
             else:
                 return (
@@ -390,6 +376,16 @@ class _NodeUpdater:
                     node['reftarget'],
                 )
 
+        self.compare_references(
+            old_xrefs,
+            new_xrefs,
+            __(
+                'inconsistent term references in translated message.'
+                ' original: {0}, translated: {1}'
+            ),
+            key_func=get_ref_key,
+        )
+        xref_reftarget_map: dict[tuple[str, str, str] | None, dict[str, Any]] = {}
         for old in old_xrefs:
             key = get_ref_key(old)
             if key:

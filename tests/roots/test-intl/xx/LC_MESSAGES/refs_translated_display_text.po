@@ -28,14 +28,17 @@ msgstr "THE ENCODING USED FOR TEXT."
 msgid "A function decorator."
 msgstr "A FUNCTION DECORATOR."
 
-msgid "Translated: A base class that is abstract."
-msgstr "TRANSLATED: A BASE CLASS THAT IS ABSTRACT."
+msgid "locale encoding"
+msgstr "CODIFICAÇÃO DA LOCALIDADE"
 
-msgid "Translated: The encoding used for text."
-msgstr "TRANSLATED: THE ENCODING USED FOR TEXT."
+msgid "abstract base class"
+msgstr "abstrakcyjna klasa bazowa"
 
-msgid "Translated: A function decorator."
-msgstr "TRANSLATED: A FUNCTION DECORATOR."
+msgid "text encoding"
+msgstr "kodowanie tekstu"
+
+msgid "decorator"
+msgstr "dekorator"
 
 msgid "Test cases from issue #14162"
 msgstr "TEST CASES FROM ISSUE #14162"
@@ -47,10 +50,10 @@ msgid "Add translated display text for hyperlink (case 2): vectorcall_."
 msgstr "ADD TRANSLATED DISPLAY TEXT FOR HYPERLINK (CASE 2): `VECTORCALL <vectorcall_>`_."
 
 # Case 3: Translated display text for hyperlink
-# Original: `Improved suggestions <URL>`_
-# Translated: translate display text but keep same URL
-msgid "Translated display text for hyperlink (case 3): `Improved suggestions <https://github.com/example/pr/1>`_."
-msgstr "TRANSLATED DISPLAY TEXT FOR HYPERLINK (CASE 3): `SUGGERIMENTI MIGLIORATI <https://github.com/example/pr/1>`_."
+# Original: `Improved suggestions <improved error messages_>`_
+# Translated: translate display text but keep the named target
+msgid "Translated display text for hyperlink (case 3): `Improved suggestions <improved error messages_>`_."
+msgstr "TRANSLATED DISPLAY TEXT FOR HYPERLINK (CASE 3): `SUGGERIMENTI MIGLIORATI <improved error messages_>`_."
 
 # Case 4: Use translated hyperlink tag
 # Original: `Documentation bugs`_
@@ -60,9 +63,9 @@ msgstr "USE TRANSLATED HYPERLINK TAG (CASE 4): `TRANSLATED DOCUMENTATION BUGS`_.
 
 # Case 5: Translated glossary term
 # Original: :term:`locale encoding`
-# Translated: translate display text using explicit target syntax
+# Translated: use the translated glossary target
 msgid "Translated glossary term (case 5): :term:`locale encoding`."
-msgstr "TRANSLATED GLOSSARY TERM (CASE 5): :term:`CODIFICAÇÃO DA LOCALIDADE <locale encoding>`."
+msgstr "TRANSLATED GLOSSARY TERM (CASE 5): :term:`CODIFICAÇÃO DA LOCALIDADE`."
 
 # Multiple refs: should allow translating display text and rely on fixup
 msgid "Multiple translated refs: vectorcall_ and `Documentation bugs`_."
@@ -71,17 +74,18 @@ msgstr "MULTIPLE TRANSLATED REFS: `TRANSLATED DOCUMENTATION BUGS`_ AND `VECTORCA
 msgid "Additional term reference cases"
 msgstr "ADDITIONAL TERM REFERENCE CASES"
 
-# Term with explicit target - simulating newline in original (from PO wrapping)
-# and translated glossary term name as target
+# The RST source has a newline inside the explicit target. Gettext normalizes
+# the message whitespace; the translated target also contains a real newline.
 msgid ""
 "Term with explicit target and newline in source: :term:`virtual <abstract "
 "base class>`."
 msgstr ""
 "TERM WITH EXPLICIT TARGET AND NEWLINE IN SOURCE: :term:`wirtualną "
-"<abstrakcyjna klasa bazowa>`."
+"<abstrakcyjna klasa\n"
+"bazowa>`."
 
 # Term without explicit target - translate the term name itself
-# This simulates when the glossary is also translated
+# The glossary definition is also translated
 msgid "Term without explicit target: :term:`text encoding`."
 msgstr "TERM WITHOUT EXPLICIT TARGET: :term:`kodowanie tekstu`."
 

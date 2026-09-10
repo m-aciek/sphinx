@@ -3,6 +3,7 @@
 i18n with translated display text for references
 =================================================
 
+.. _improved error messages: https://github.com/example/pr/1
 .. _vectorcall: https://peps.python.org/pep-0590/
 .. _Documentation bugs: https://github.com/sphinx-doc/sphinx/issues
 
@@ -10,30 +11,21 @@ i18n with translated display text for references
 
    locale encoding
       The encoding used for the locale.
-   
+
    abstract base class
       A base class that is abstract.
-   
+
    text encoding
       The encoding used for text.
-   
+
    decorator
       A function decorator.
-   
-   abstrakcyjna klasa bazowa
-      Translated: A base class that is abstract.
-   
-   kodowanie tekstu
-      Translated: The encoding used for text.
-   
-   dekorator
-      Translated: A function decorator.
 
 .. rubric:: Test cases from issue #14162
 
 1. Add translated display text for hyperlink (case 2): vectorcall_.
 
-2. Translated display text for hyperlink (case 3): `Improved suggestions <https://github.com/example/pr/1>`_.
+2. Translated display text for hyperlink (case 3): `Improved suggestions <improved error messages_>`_.
 
 3. Use translated hyperlink tag (case 4): `Documentation bugs`_.
 
@@ -43,7 +35,8 @@ i18n with translated display text for references
 
 .. rubric:: Additional term reference cases
 
-6. Term with explicit target and newline in source: :term:`virtual <abstract base class>`.
+6. Term with explicit target and newline in source: :term:`virtual <abstract
+   base class>`.
 
 7. Term without explicit target: :term:`text encoding`.
 
