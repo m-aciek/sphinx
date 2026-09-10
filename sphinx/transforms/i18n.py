@@ -32,6 +32,10 @@ from sphinx.util.nodes import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    type _XrefComparison = tuple[
+        nodes.Element, list[addnodes.pending_xref], list[addnodes.pending_xref]
+    ]
+
     from sphinx.application import Sphinx
     from sphinx.config import Config
     from sphinx.environment import BuildEnvironment
@@ -48,9 +52,6 @@ logger = logging.getLogger(__name__)
 #               to the pending_xref on translation
 EXCLUDED_PENDING_XREF_ATTRIBUTES = ('refexplicit',)
 
-type _XrefComparison = tuple[
-    nodes.Element, list[addnodes.pending_xref], list[addnodes.pending_xref]
-]
 
 
 def _publish_msgstr(
@@ -236,7 +237,7 @@ class _NodeUpdater:
 
     def update_autofootnote_references(self) -> None:
         # auto-numbered foot note reference should use original 'ids'.
-        def list_replace_or_append[N: nodes.Node](lst: list[N], old: N, new: N) -> None:
+        def list_replace_or_append(lst: list[N], old: N, new: N) -> None:
             if old in lst:
                 lst[lst.index(old)] = new
             else:
