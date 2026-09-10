@@ -151,9 +151,8 @@ class _NodeUpdater:
         # Recall objects which compare equal have the same hash value.
         old_ref_keys.sort(key=hash)
         new_ref_keys.sort(key=hash)
-        inconsistent = old_ref_keys != new_ref_keys
 
-        if inconsistent:
+        if old_ref_keys != new_ref_keys:
             old_ref_rawsources = [ref.rawsource for ref in old_refs]
             new_ref_rawsources = [ref.rawsource for ref in new_refs]
             logger.warning(
