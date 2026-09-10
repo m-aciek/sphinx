@@ -237,7 +237,7 @@ class _NodeUpdater:
 
     def update_autofootnote_references(self) -> None:
         # auto-numbered foot note reference should use original 'ids'.
-        def list_replace_or_append(lst: list[N], old: N, new: N) -> None:
+        def list_replace_or_append[N: nodes.Node](lst: list[N], old: N, new: N) -> None:
             if old in lst:
                 lst[lst.index(old)] = new
             else:
