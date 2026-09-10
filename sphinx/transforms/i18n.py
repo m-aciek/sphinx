@@ -133,7 +133,6 @@ class _NodeUpdater:
         warning_msg: str,
         *,
         key_func: Callable[[nodes.Element], Any] = attrgetter('rawsource'),
-        count_only: bool = False,
     ) -> None:
         """Warn about mismatches between references in original and translated content.
         Ignores the order of references when comparing. This allows translators to
@@ -141,23 +140,18 @@ class _NodeUpdater:
 
         :param key_func: A function to extract the comparison key from each reference.
             Defaults to extracting the ``rawsource`` attribute.
-        :param count_only: Compare only the number of references when their names
-            may be translated.
         """
         if self.noqa:
             return
 
-        if count_only:
-            inconsistent = len(old_refs) != len(new_refs)
-        else:
-            old_ref_keys = list(map(key_func, old_refs))
-            new_ref_keys = list(map(key_func, new_refs))
+        old_ref_keys = list(map(key_func, old_refs))
+        new_ref_keys = list(map(key_func, new_refs))
 
-            # The ref_keys lists may contain ``None``, so compare hashes.
-            # Recall objects which compare equal have the same hash value.
-            old_ref_keys.sort(key=hash)
-            new_ref_keys.sort(key=hash)
-            inconsistent = old_ref_keys != new_ref_keys
+        # The ref_keys lists may contain ``None``, so compare hashes.
+        # Recall objects which compare equal have the same hash value.
+        old_ref_keys.sort(key=hash)
+        new_ref_keys.sort(key=hash)
+        inconsistent = old_ref_keys != new_ref_keys
 
         if inconsistent:
             old_ref_rawsources = [ref.rawsource for ref in old_refs]
