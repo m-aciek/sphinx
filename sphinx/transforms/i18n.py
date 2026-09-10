@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     type _XrefComparison = tuple[
-        nodes.Element, list[addnodes.pending_xref], list[addnodes.pending_xref]
+        list[addnodes.pending_xref], list[addnodes.pending_xref]
     ]
 
     from sphinx.application import Sphinx
@@ -51,7 +51,6 @@ logger = logging.getLogger(__name__)
 # * refexplict: For allow to give (or not to give) an explicit title
 #               to the pending_xref on translation
 EXCLUDED_PENDING_XREF_ATTRIBUTES = ('refexplicit',)
-
 
 
 def _publish_msgstr(
@@ -390,10 +389,11 @@ class _NodeUpdater:
         if any(get_ref_key(ref) is None for ref in (*old_xrefs, *new_xrefs)):
             # Glossaries in other documents may not have been translated yet.
             if not self.noqa:
-                pending: list[_XrefComparison] = self.document.setdefault(
+                # Content nodes survive document assembly in singlehtml and LaTeX.
+                pending: list[_XrefComparison] = self.node.setdefault(
                     '_i18n_pending_xrefs', []
                 )
-                pending.append((self.node, old_xrefs, new_xrefs))
+                pending.append((old_xrefs, new_xrefs))
         else:
             self.compare_references(
                 old_xrefs,
@@ -440,20 +440,21 @@ class TranslatedTermReferences(SphinxPostTransform):
                 )
             return ref['refdomain'], ref['reftype'], target
 
-        pending: list[_XrefComparison] = self.document.attributes.pop(
-            '_i18n_pending_xrefs', []
-        )
-        for node, old_refs, new_refs in pending:
-            updater = _NodeUpdater(node, node, self.document, noqa=False)
-            updater.compare_references(
-                old_refs,
-                new_refs,
-                __(
-                    'inconsistent term references in translated message.'
-                    ' original: {0}, translated: {1}'
-                ),
-                key_func=get_ref_key,
+        for node in self.document.findall(nodes.Element):
+            pending: list[_XrefComparison] = node.attributes.pop(
+                '_i18n_pending_xrefs', []
             )
+            for old_refs, new_refs in pending:
+                updater = _NodeUpdater(node, node, self.document, noqa=False)
+                updater.compare_references(
+                    old_refs,
+                    new_refs,
+                    __(
+                        'inconsistent term references in translated message.'
+                        ' original: {0}, translated: {1}'
+                    ),
+                    key_func=get_ref_key,
+                )
 
 
 class Locale(SphinxTransform):

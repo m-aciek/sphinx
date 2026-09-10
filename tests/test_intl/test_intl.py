@@ -625,6 +625,63 @@ def test_translated_term_consistency_other_document(
 
 
 @sphinx_intl
+@pytest.mark.sphinx(testroot='basic', srcdir='intl_included_document', freshenv=True)
+@pytest.mark.parametrize('buildername', ['html', 'singlehtml', 'latex'])
+@pytest.mark.parametrize(
+    ('term', 'function', 'warns'),
+    [('pomme', 'first', False), ('poire', 'first', True), ('pomme', 'second', True)],
+)
+def test_translated_xref_consistency_included_document(
+    make_app: Callable[..., SphinxTestApp],
+    app_params: _app_params,
+    tmp_path: Path,
+    buildername: str,
+    term: str,
+    function: str,
+    warns: bool,
+) -> None:
+    app = make_app(buildername, **app_params.kwargs)
+    original = 'Original: :term:`apple` and :func:`first`.'
+    (app.srcdir / 'index.rst').write_text(
+        'Test\n====\n\n.. toctree::\n\n   child\n   glossary\n', encoding='utf8'
+    )
+    (app.srcdir / 'child.rst').write_text(
+        f'Child\n=====\n\n{original}\n', encoding='utf8'
+    )
+    (app.srcdir / 'glossary.rst').write_text(
+        'Glossary\n========\n\n.. glossary::\n\n'
+        '   apple\n'
+        '      A fruit.\n\n'
+        '   pear\n'
+        '      Another fruit.\n\n'
+        '.. function:: first()\n\n'
+        '.. function:: second()\n',
+        encoding='utf8',
+    )
+    app.config.locale_dirs = [str(tmp_path)]
+    locale_dir = tmp_path / _CATALOG_LOCALE / 'LC_MESSAGES'
+    locale_dir.mkdir(parents=True)
+    catalog = Catalog()
+    catalog.add(original, f'Translated: :term:`{term}` and :func:`{function}`.')
+    write_mo(locale_dir / 'child.mo', catalog)
+    glossary = Catalog()
+    glossary.add('apple', 'pomme')
+    glossary.add('pear', 'poire')
+    write_mo(locale_dir / 'glossary.mo', glossary)
+
+    for force_all in (False, True):
+        app.warning.seek(0)
+        app.warning.truncate(0)
+        app.build(force_all=force_all)
+
+        warnings = getwarning(app.warning)
+        assert ('[i18n.inconsistent_references]' in warnings) is warns, warnings
+        assert '[ref.term]' not in warnings, warnings
+        if warns:
+            assert 'child.rst:4: WARNING: inconsistent term references' in warnings
+
+
+@sphinx_intl
 @pytest.mark.sphinx('html', testroot='basic', freshenv=True)
 @pytest.mark.parametrize(
     ('original', 'translated', 'warns'),
