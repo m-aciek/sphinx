@@ -292,16 +292,6 @@ class _NodeUpdater:
         is_refnamed_ref = NodeMatcher(nodes.reference, refname=Any)
         old_refs = list(is_refnamed_ref.findall(self.node))
         new_refs = list(is_refnamed_ref.findall(self.patch))
-        # Both display text and reference names may be translated.
-        self.compare_references(
-            old_refs,
-            new_refs,
-            __(
-                'inconsistent references in translated message.'
-                ' original: {0}, translated: {1}'
-            ),
-            count_only=True,
-        )
         old_ref_names = [r['refname'] for r in old_refs]
         new_ref_names = [r['refname'] for r in new_refs]
         orphans = [*({*old_ref_names} - {*new_ref_names})]
@@ -317,6 +307,18 @@ class _NodeUpdater:
                     pass
 
             self.document.note_refname(newr)
+
+        # Display text and reference names may be translated, but references
+        # must still resolve to the same targets (including multiplicity).
+        self.compare_references(
+            old_refs,
+            new_refs,
+            __(
+                'inconsistent references in translated message.'
+                ' original: {0}, translated: {1}'
+            ),
+            key_func=lambda ref: self.document.nameids.get(ref['refname']),
+        )
 
     def update_refnamed_footnote_references(self) -> None:
         # refnamed footnote should use original 'ids'.

@@ -546,6 +546,61 @@ def test_translated_xref_consistency(
 
 
 @sphinx_intl
+@pytest.mark.sphinx('html', testroot='basic', freshenv=True)
+@pytest.mark.parametrize(
+    ('original', 'translated', 'warns'),
+    [
+        pytest.param(
+            'Read first_.',
+            'Read `GUIDE <second_>`_.',
+            True,
+            id='changed-target',
+        ),
+        pytest.param(
+            'Read first_ and second_.',
+            'Read first_ and first_.',
+            True,
+            id='duplicated-target',
+        ),
+        pytest.param(
+            'Read `guide <first_>`_.',
+            'Read `GUIDE <first_>`_.',
+            False,
+            id='translated-display-text',
+        ),
+    ],
+)
+def test_translated_refnamed_consistency(
+    app: SphinxTestApp,
+    tmp_path: Path,
+    original: str,
+    translated: str,
+    warns: bool,
+) -> None:
+    original = f'Original: {original}'
+    translated = f'Translated: {translated}'
+    (app.srcdir / 'index.rst').write_text(
+        'Test\n====\n\n'
+        '.. _first: https://example.org/first\n'
+        '.. _second: https://example.org/second\n\n'
+        f'{original}\n',
+        encoding='utf8',
+    )
+    catalog = Catalog()
+    catalog.add(original, translated)
+    app.config.locale_dirs = [str(tmp_path)]
+    locale_dir = tmp_path / _CATALOG_LOCALE / 'LC_MESSAGES'
+    locale_dir.mkdir(parents=True)
+    write_mo(locale_dir / 'index.mo', catalog)
+
+    app.build()
+
+    assert 'Translated:' in app.env.get_doctree('index').astext()
+    warnings = getwarning(app.warning)
+    assert ('[i18n.inconsistent_references]' in warnings) is warns, warnings
+
+
+@sphinx_intl
 @pytest.mark.sphinx('gettext', testroot='intl')
 @pytest.mark.test_params(shared_result='test_intl_gettext')
 def test_gettext_section(app: SphinxTestApp) -> None:
