@@ -16,6 +16,7 @@ from sphinx.errors import ConfigError
 from sphinx.locale import __
 from sphinx.locale import init as init_locale
 from sphinx.transforms import SphinxTransform
+from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util import get_filetype, logging
 from sphinx.util.docutils import LoggingReporter
 from sphinx.util.i18n import docname_to_domain
@@ -46,6 +47,10 @@ logger = logging.getLogger(__name__)
 # * refexplict: For allow to give (or not to give) an explicit title
 #               to the pending_xref on translation
 EXCLUDED_PENDING_XREF_ATTRIBUTES = ('refexplicit',)
+
+type _XrefComparison = tuple[
+    nodes.Element, list[addnodes.pending_xref], list[addnodes.pending_xref]
+]
 
 
 def _publish_msgstr(
@@ -287,7 +292,12 @@ class _NodeUpdater:
         new_refs = list(is_refnamed_ref.findall(self.patch))
         old_ref_names = [r['refname'] for r in old_refs]
         new_ref_names = [r['refname'] for r in new_refs]
-        orphans = [*({*old_ref_names} - {*new_ref_names})]
+        orphans = [
+            name for name in dict.fromkeys(old_ref_names) if name not in new_ref_names
+        ]
+        ambiguous = len(orphans) > 1 and any(
+            not self.document.has_name(name) for name in new_ref_names
+        )
         for newr in new_refs:
             if not self.document.has_name(newr['refname']):
                 # Maybe refname is translated but target is not translated.
@@ -310,7 +320,13 @@ class _NodeUpdater:
                 'inconsistent references in translated message.'
                 ' original: {0}, translated: {1}'
             ),
-            key_func=lambda ref: self.document.nameids.get(ref['refname']),
+            # The fallback cannot establish which of several orphan targets
+            # a translated name means. Keep warning about those assignments.
+            key_func=lambda ref: (
+                ref.rawsource
+                if ambiguous
+                else self.document.nameids.get(ref['refname'])
+            ),
         )
 
     def update_refnamed_footnote_references(self) -> None:
@@ -362,7 +378,6 @@ class _NodeUpdater:
         def get_ref_key(node: nodes.Element) -> tuple[str, str, str] | None:
             case = node['refdomain'], node['reftype']
             if case == ('std', 'term'):
-                # Glossary targets may be translated; compare only their count.
                 return None
             else:
                 return (
@@ -371,15 +386,23 @@ class _NodeUpdater:
                     node['reftarget'],
                 )
 
-        self.compare_references(
-            old_xrefs,
-            new_xrefs,
-            __(
-                'inconsistent term references in translated message.'
-                ' original: {0}, translated: {1}'
-            ),
-            key_func=get_ref_key,
-        )
+        if any(get_ref_key(ref) is None for ref in (*old_xrefs, *new_xrefs)):
+            # Glossaries in other documents may not have been translated yet.
+            if not self.noqa:
+                pending: list[_XrefComparison] = self.document.setdefault(
+                    '_i18n_pending_xrefs', []
+                )
+                pending.append((self.node, old_xrefs, new_xrefs))
+        else:
+            self.compare_references(
+                old_xrefs,
+                new_xrefs,
+                __(
+                    'inconsistent term references in translated message.'
+                    ' original: {0}, translated: {1}'
+                ),
+                key_func=get_ref_key,
+            )
         xref_reftarget_map: dict[tuple[str, str, str] | None, dict[str, Any]] = {}
         for old in old_xrefs:
             key = get_ref_key(old)
@@ -397,6 +420,39 @@ class _NodeUpdater:
         for child in self.patch.children:
             child.parent = self.node
         self.node.children = self.patch.children
+
+
+class TranslatedTermReferences(SphinxPostTransform):
+    """Compare translated glossary references after all terms are registered."""
+
+    default_priority = 5  # Before ReferencesResolver replaces pending_xref nodes.
+
+    def run(self, **kwargs: Any) -> None:
+        domain = self.env.domains.standard_domain
+
+        def get_ref_key(ref: nodes.Element) -> tuple[str, str, str | tuple[str, str]]:
+            target = ref['reftarget']
+            if (ref['refdomain'], ref['reftype']) == ('std', 'term'):
+                # Match the standard domain's exact, then case-insensitive lookup.
+                target = domain.objects.get(('term', target)) or domain._terms.get(
+                    target.lower(), target
+                )
+            return ref['refdomain'], ref['reftype'], target
+
+        pending: list[_XrefComparison] = self.document.attributes.pop(
+            '_i18n_pending_xrefs', []
+        )
+        for node, old_refs, new_refs in pending:
+            updater = _NodeUpdater(node, node, self.document, noqa=False)
+            updater.compare_references(
+                old_refs,
+                new_refs,
+                __(
+                    'inconsistent term references in translated message.'
+                    ' original: {0}, translated: {1}'
+                ),
+                key_func=get_ref_key,
+            )
 
 
 class Locale(SphinxTransform):
@@ -715,6 +771,7 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     app.add_transform(TranslationProgressTotaliser)
     app.add_transform(AddTranslationClasses)
     app.add_transform(RemoveTranslatableInline)
+    app.add_post_transform(TranslatedTermReferences)
 
     return {
         'version': 'builtin',

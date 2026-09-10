@@ -507,6 +507,25 @@ def test_html_refs_translated_display_text(app: SphinxTestApp) -> None:
             True,
             id='extra-term',
         ),
+        pytest.param(':term:`apple`', ':term:`pear`', True, id='changed-term'),
+        pytest.param(
+            ':term:`apple`', ':term:`poire`', True, id='changed-translated-term'
+        ),
+        pytest.param(
+            ':term:`apple` and :term:`pear`',
+            ':term:`pomme` and :term:`pomme`',
+            True,
+            id='changed-term-multiplicity',
+        ),
+        pytest.param(
+            ':term:`apple` and :term:`pear`',
+            ':term:`POIRE` and :term:`pomme`',
+            False,
+            id='reordered-translated-terms',
+        ),
+        pytest.param(
+            ':term:`apple`', ':term:`pear` # noqa', False, id='changed-term-noqa'
+        ),
         pytest.param(':func:`first`', ':func:`second` # noqa', False, id='noqa'),
     ],
 )
@@ -525,12 +544,15 @@ def test_translated_xref_consistency(
         '.. function:: second()\n\n'
         '.. glossary::\n\n'
         '   apple\n'
-        '      A fruit.\n',
+        '      A fruit.\n\n'
+        '   pear\n'
+        '      Another fruit.\n',
         encoding='utf8',
     )
     catalog = Catalog()
     catalog.add(original, translated)
     catalog.add('apple', 'pomme')
+    catalog.add('pear', 'poire')
     # Gettext caches catalogs by filename, so each case needs a distinct path.
     app.config.locale_dirs = [str(tmp_path)]
     locale_dir = tmp_path / _CATALOG_LOCALE / 'LC_MESSAGES'
@@ -541,6 +563,63 @@ def test_translated_xref_consistency(
 
     doctree = app.env.get_doctree('index')
     assert 'Translated:' in doctree.astext()
+    warnings = getwarning(app.warning)
+    assert ('[i18n.inconsistent_references]' in warnings) is warns, warnings
+
+
+@sphinx_intl
+@pytest.mark.sphinx('html', testroot='basic', freshenv=True)
+@pytest.mark.parametrize('parallel', [0, 2])
+@pytest.mark.parametrize('glossary_doc', ['a_glossary', 'z_glossary'])
+@pytest.mark.parametrize(('target', 'warns'), [('pomme', False), ('poire', True)])
+def test_translated_term_consistency_other_document(
+    app: SphinxTestApp,
+    tmp_path: Path,
+    parallel: int,
+    glossary_doc: str,
+    target: str,
+    warns: bool,
+) -> None:
+    app.parallel = parallel
+    original = 'Original: :term:`apple`.'
+    (app.srcdir / 'index.rst').write_text(
+        f'Test\n====\n\n{original}\n\n.. toctree::\n\n   {glossary_doc}\n',
+        encoding='utf8',
+    )
+    (app.srcdir / f'{glossary_doc}.rst').write_text(
+        'Glossary\n========\n\n.. glossary::\n\n'
+        '   apple\n'
+        '      A fruit.\n\n'
+        '   pear\n'
+        '      Another fruit.\n',
+        encoding='utf8',
+    )
+    app.config.locale_dirs = [str(tmp_path)]
+    locale_dir = tmp_path / _CATALOG_LOCALE / 'LC_MESSAGES'
+    locale_dir.mkdir(parents=True)
+    catalog = Catalog()
+    catalog.add(original, f'Translated: :term:`{target}`.')
+    write_mo(locale_dir / 'index.mo', catalog)
+    glossary = Catalog()
+    glossary.add('apple', 'pomme')
+    glossary.add('pear', 'poire')
+    write_mo(locale_dir / f'{glossary_doc}.mo', glossary)
+
+    app.build()
+
+    warnings = getwarning(app.warning)
+    assert ('[i18n.inconsistent_references]' in warnings) is warns, warnings
+    assert '[ref.term]' not in warnings, warnings
+    doctree = app.env.get_and_resolve_doctree('index', app.builder, tags=app.tags)
+    paragraph = next(doctree.findall(nodes.paragraph))
+    ref = next(paragraph.findall(nodes.reference))
+    term_id = 'pear' if warns else 'apple'
+    assert ref['refuri'] == f'{glossary_doc}.html#term-{term_id}'
+
+    # Reusing the saved doctree must retain the deferred consistency check.
+    app.warning.seek(0)
+    app.warning.truncate(0)
+    app.build(force_all=True)
     warnings = getwarning(app.warning)
     assert ('[i18n.inconsistent_references]' in warnings) is warns, warnings
 
@@ -567,6 +646,30 @@ def test_translated_xref_consistency(
             'Read `GUIDE <first_>`_.',
             False,
             id='translated-display-text',
+        ),
+        pytest.param(
+            'Read first_ and second_.',
+            'Read premier_ and deuxieme_.',
+            True,
+            id='ambiguous-translated-names',
+        ),
+        pytest.param(
+            'Read first_ and second_.',
+            'Read deuxieme_ and premier_.',
+            True,
+            id='ambiguous-reordered-translated-names',
+        ),
+        pytest.param(
+            'Read first_ and second_.',
+            'Read premier_ and deuxieme_. # noqa',
+            False,
+            id='ambiguous-translated-names-noqa',
+        ),
+        pytest.param(
+            'Read first_ and second_.',
+            'Read deuxieme_ and `PREMIER <first_>`_.',
+            False,
+            id='one-translated-name-with-explicit-target',
         ),
     ],
 )
