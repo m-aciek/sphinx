@@ -43,26 +43,50 @@ DEFAULT_TEMPLATE_PATH = package_dir.joinpath('templates', 'gettext')
 logger = logging.getLogger(__name__)
 
 
+def _determine_node_flags(node: Element) -> set[str]:
+    """Determine gettext flags for a node based on its properties."""
+    flags = set()
+    
+    # Check if this is a literal block (code block)
+    if isinstance(node, nodes.literal_block):
+        flags.add('code-block-provenance')
+        
+        # Add language-specific flag if available
+        language = node.get('language')
+        if language and language != 'default':
+            flags.add(f'{language}-language')
+    
+    # Check if this is a doctest block
+    elif isinstance(node, nodes.doctest_block):
+        flags.add('code-block-provenance')
+        flags.add('python-language')  # doctest blocks are always Python
+    
+    return flags
+
+
 class Message:
     """An entry of translatable message."""
 
-    __slots__ = 'text', 'locations', 'uuids'
+    __slots__ = 'text', 'locations', 'uuids', 'flags'
 
     text: str
     locations: list[tuple[str, int]]
     uuids: list[str]
+    flags: set[str]
 
     def __init__(
-        self, text: str, locations: list[tuple[str, int]], uuids: list[str]
+        self, text: str, locations: list[tuple[str, int]], uuids: list[str], flags: set[str] | None = None
     ) -> None:
         self.text = text
         self.locations = locations
         self.uuids = uuids
+        self.flags = flags or set()
 
     def __repr__(self) -> str:
         return (
             'Message('
-            f'text={self.text!r}, locations={self.locations!r}, uuids={self.uuids!r}'
+            f'text={self.text!r}, locations={self.locations!r}, uuids={self.uuids!r}, '
+            f'flags={self.flags!r}'
             ')'
         )
 
@@ -70,13 +94,15 @@ class Message:
 class Catalog:
     """Catalog of translatable messages."""
 
-    __slots__ = ('metadata',)
+    __slots__ = ('metadata', 'flags_metadata')
 
     def __init__(self) -> None:
         # msgid -> file, line, uid
         self.metadata: dict[str, list[tuple[str, int, str]]] = {}
+        # msgid -> set of flags
+        self.flags_metadata: dict[str, set[str]] = {}
 
-    def add(self, msg: str, origin: Element | MsgOrigin) -> None:
+    def add(self, msg: str, origin: Element | MsgOrigin, flags: set[str] | None = None) -> None:
         if not hasattr(origin, 'uid'):
             # Nodes that are replicated like todo don't have a uid,
             # however translation is also unnecessary.
@@ -84,12 +110,18 @@ class Catalog:
         msg_metadata = self.metadata.setdefault(msg, [])
         line = line if (line := origin.line) is not None else -1
         msg_metadata.append((origin.source or '', line, origin.uid))
+        
+        # Store flags for this message
+        if flags:
+            existing_flags = self.flags_metadata.setdefault(msg, set())
+            existing_flags.update(flags)
 
     def __iter__(self) -> Iterator[Message]:
         for message, msg_metadata in self.metadata.items():
             positions = sorted(set(map(operator.itemgetter(0, 1), msg_metadata)))
             uuids = list(map(operator.itemgetter(2), msg_metadata))
-            yield Message(text=message, locations=positions, uuids=uuids)
+            flags = self.flags_metadata.get(message, set())
+            yield Message(text=message, locations=positions, uuids=uuids, flags=flags)
 
     @property
     def messages(self) -> list[str]:
@@ -182,19 +214,22 @@ class I18nBuilder(Builder):
         for toctree in self.env.tocs[docname].findall(addnodes.toctree):
             for node, msg in extract_messages(toctree):
                 node.uid = ''  # type: ignore[attr-defined]  # Hack UUID model
-                catalog.add(msg, node)
+                flags = _determine_node_flags(node)
+                catalog.add(msg, node, flags)
 
         for node, msg in extract_messages(doctree):
             # Do not extract messages from within substitution definitions.
             if not _is_node_in_substitution_definition(node):
-                catalog.add(msg, node)
+                flags = _determine_node_flags(node)
+                catalog.add(msg, node, flags)
 
         if 'index' in self.config.gettext_additional_targets:
             # Extract translatable messages from index entries.
             for node, entries in traverse_translatable_index(doctree):
                 for entry_type, value, _target_id, _main, _category_key in entries:
                     for m in split_index_msg(entry_type, value):
-                        catalog.add(m, node)
+                        flags = _determine_node_flags(node)
+                        catalog.add(m, node, flags)
 
 
 # If set, use the timestamp from SOURCE_DATE_EPOCH

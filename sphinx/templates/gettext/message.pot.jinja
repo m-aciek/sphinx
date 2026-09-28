@@ -28,6 +28,9 @@ msgstr ""
 {% endfor -%}
 {% endif -%}
 
+{% if message.flags -%}
+#, {{ message.flags|list|sort|join(', ') }}
+{% endif %}
 msgid "{{ message.text|e }}"
 msgstr ""
 {% endfor -%}

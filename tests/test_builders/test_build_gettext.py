@@ -349,3 +349,57 @@ def test_gettext_trailing_backslashes(app: SphinxTestApp) -> None:
         'footnote with backslashes and done 2',
         'directive with backslashes',
     ]
+
+
+def test_gettext_code_block_flags() -> None:
+    """Test that gettext builder adds flags to code blocks."""
+    from sphinx.builders.gettext import Catalog, Message, MsgOrigin, _determine_node_flags
+    from docutils import nodes
+
+    # Test the flag determination function
+    python_block = nodes.literal_block()
+    python_block['language'] = 'python'
+    flags = _determine_node_flags(python_block)
+    assert 'code-block-provenance' in flags
+    assert 'python-language' in flags
+
+    c_block = nodes.literal_block()
+    c_block['language'] = 'c'
+    flags = _determine_node_flags(c_block)
+    assert 'code-block-provenance' in flags
+    assert 'c-language' in flags
+
+    # Test literal block with no specific language
+    generic_block = nodes.literal_block()
+    flags = _determine_node_flags(generic_block)
+    assert 'code-block-provenance' in flags
+    assert len([f for f in flags if f.endswith('-language')]) == 0
+
+    # Test doctest block
+    doctest_block = nodes.doctest_block()
+    flags = _determine_node_flags(doctest_block)
+    assert 'code-block-provenance' in flags
+    assert 'python-language' in flags
+
+    # Test non-code block
+    text_block = nodes.paragraph()
+    flags = _determine_node_flags(text_block)
+    assert len(flags) == 0
+
+    # Test Message class with flags
+    flags = {'code-block-provenance', 'python-language'}
+    message = Message(
+        text='def hello(): pass',
+        locations=[('test.rst', 10)],
+        uuids=['abc123'],
+        flags=flags
+    )
+    assert message.flags == flags
+
+    # Test Catalog with flags
+    catalog = Catalog()
+    origin = MsgOrigin('test.rst', 10)
+    catalog.add('def hello(): pass', origin, flags)
+    messages = list(catalog)
+    assert len(messages) == 1
+    assert messages[0].flags == flags
